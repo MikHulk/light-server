@@ -63,6 +63,7 @@ impl Service<Request<IncomingBody>> for FsSvc {
                 .unwrap())
         }
 
+        let path = req.uri().path();
         let resp = match self.fs.get(path.split('/').skip(1).collect()) {
             Some(FsNode::File(content)) => mk_response(&content),
             _ => mk_error(StatusCode::NOT_FOUND),
