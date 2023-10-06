@@ -27,10 +27,10 @@ fn it_processes_files_from_fspath() {
     }
     .unwrap();
     assert!(dir_map.contains_key("Cargo.toml"), "no Cargo.toml");
-    assert!(dir_map.contains_key("src"), "no src directory");
-    assert!(is_dir(dir_map.get("src").unwrap()), "src not a directory");
     assert!(
         is_file(dir_map.get("Cargo.toml").unwrap()),
         "Cargo.toml not a file"
     );
+    assert!(dir_map.contains_key("src"), "no src directory");
+    assert!(is_dir(dir_map.get("src").unwrap()), "src not a directory");
 }

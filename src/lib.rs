@@ -41,4 +41,8 @@ impl FsNode {
             Ok(process_file(path)?)
         }
     }
+
+    pub fn get(&self, _path: Vec<&str>) -> Option<FsNode> {
+        None
+    }
 }

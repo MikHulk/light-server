@@ -51,22 +51,22 @@ impl Service<Request<IncomingBody>> for FsSvc {
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
 
     fn call(&self, req: Request<IncomingBody>) -> Self::Future {
-        fn mk_response(s: Vec<u8>) -> Result<Response<Full<Bytes>>, hyper::Error> {
-            Ok(Response::builder().body(Full::new(Bytes::from(s))).unwrap())
-        }
-        fn mk_error() -> Result<Response<Full<Bytes>>, hyper::Error> {
+        fn mk_response(v: &[u8]) -> Result<Response<Full<Bytes>>, hyper::Error> {
             Ok(Response::builder()
-                .status(StatusCode::NOT_FOUND)
-                .body(Full::new(Bytes::from("not found")))
+                .body(Full::new(Bytes::from(v.to_owned())))
+                .unwrap())
+        }
+        fn mk_error(status: StatusCode) -> Result<Response<Full<Bytes>>, hyper::Error> {
+            Ok(Response::builder()
+                .status(status)
+                .body(Full::new(Bytes::from(format!("{}", status))))
                 .unwrap())
         }
 
-        let path = req.uri().path();
-        println!("{:?}", path);
-        for part in path.split('/') {
-            println!("{}", part);
-        }
-        let resp = mk_error();
+        let resp = match self.fs.get(path.split('/').skip(1).collect()) {
+            Some(FsNode::File(content)) => mk_response(&content),
+            _ => mk_error(StatusCode::NOT_FOUND),
+        };
         Box::pin(async { resp })
     }
 }
