@@ -21,8 +21,9 @@ fn it_processes_files_from_fspath() {
         result.is_ok() && is_dir(result.as_ref().unwrap()),
         ". not a dir"
     );
-    let dir_map = match result.unwrap() {
-        FsNode::Dir(dir_map) => Ok(dir_map),
+    let node = result.unwrap();
+    let dir_map = match node {
+        FsNode::Dir(ref dir_map) => Ok(dir_map),
         _ => Err(()),
     }
     .unwrap();
@@ -33,4 +34,12 @@ fn it_processes_files_from_fspath() {
     );
     assert!(dir_map.contains_key("src"), "no src directory");
     assert!(is_dir(dir_map.get("src").unwrap()), "src not a directory");
+
+    assert!(node.get(&[&""]).is_none());
+    assert!(node.get(&[&"src", "main.rs"]).is_some());
+    assert!(node.get(&[&"tests", "fsnode_integ_test.rs"]).is_some());
+    assert!(node.get(&[&"tests", "test.rs"]).is_none());
+    assert!(node
+        .get(&[&"tests", "deep", "deep", "deep", "file"])
+        .is_some());
 }

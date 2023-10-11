@@ -34,8 +34,8 @@ impl Service<Request<IncomingBody>> for FsSvc {
         }
 
         let path = req.uri().path();
-        let resp = match self.fs.get(path.split('/').skip(1).collect()) {
-            Some(FsNode::File(content)) => mk_response(&content),
+        let resp = match self.fs.get(&path.split('/').skip(1).collect::<Vec<&str>>()) {
+            Some(content) => mk_response(content),
             _ => mk_error(StatusCode::NOT_FOUND),
         };
         Box::pin(async { resp })
