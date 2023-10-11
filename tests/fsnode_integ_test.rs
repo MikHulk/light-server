@@ -1,4 +1,4 @@
-use light_server::FsNode;
+use light_server::fs::FsNode;
 
 fn is_dir(x: &FsNode) -> bool {
     match x {

@@ -1,20 +1,13 @@
-use bytes::Bytes;
-use http_body_util::Full;
-use hyper::body::Incoming as IncomingBody;
-use hyper::http::StatusCode;
 use hyper::server::conn::http1;
-use hyper::service::Service;
-use hyper::{Request, Response};
 use hyper_util::rt::TokioIo;
 use tokio::net::TcpListener;
 
 use std::env;
-use std::future::Future;
 use std::net::SocketAddr;
-use std::pin::Pin;
 use std::sync::Arc;
 
-use light_server::FsNode;
+use light_server::fs::FsNode;
+use light_server::services::FsSvc;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -38,36 +31,5 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 println!("Failed to serve connection: {:?}", err);
             }
         });
-    }
-}
-
-struct FsSvc {
-    fs: Arc<FsNode>,
-}
-
-impl Service<Request<IncomingBody>> for FsSvc {
-    type Response = Response<Full<Bytes>>;
-    type Error = hyper::Error;
-    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
-
-    fn call(&self, req: Request<IncomingBody>) -> Self::Future {
-        fn mk_response(v: &[u8]) -> Result<Response<Full<Bytes>>, hyper::Error> {
-            Ok(Response::builder()
-                .body(Full::new(Bytes::from(v.to_owned())))
-                .unwrap())
-        }
-        fn mk_error(status: StatusCode) -> Result<Response<Full<Bytes>>, hyper::Error> {
-            Ok(Response::builder()
-                .status(status)
-                .body(Full::new(Bytes::from(format!("{}", status))))
-                .unwrap())
-        }
-
-        let path = req.uri().path();
-        let resp = match self.fs.get(path.split('/').skip(1).collect()) {
-            Some(FsNode::File(content)) => mk_response(&content),
-            _ => mk_error(StatusCode::NOT_FOUND),
-        };
-        Box::pin(async { resp })
     }
 }
