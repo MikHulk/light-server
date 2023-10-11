@@ -13,7 +13,7 @@ use light_server::services::FsSvc;
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let args: Vec<_> = env::args().collect();
     let dir_path = args[1].clone();
-    let addr: SocketAddr = ([127, 0, 0, 1], 3000).into();
+    let addr: SocketAddr = args[2].parse()?;
     let listener = TcpListener::bind(addr).await?;
     println!("Listening on http://{}, serving {}", addr, dir_path);
 
