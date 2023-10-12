@@ -20,16 +20,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let root_dir =
         Arc::new(tokio::task::spawn_blocking(move || FsNode::from_fs(&dir_path)).await??);
     loop {
-        let (stream, _) = listener.accept().await?;
-        let io = TokioIo::new(stream);
-        let new_ref = root_dir.clone();
-        tokio::task::spawn(async move {
-            if let Err(err) = http1::Builder::new()
-                .serve_connection(io, FsSvc { fs: new_ref })
-                .await
-            {
-                println!("Failed to serve connection: {:?}", err);
+        match listener.accept().await {
+            Ok((stream, _)) => {
+                let io = TokioIo::new(stream);
+                let new_ref = root_dir.clone();
+                tokio::task::spawn(async move {
+                    if let Err(err) = http1::Builder::new()
+                        .serve_connection(io, FsSvc { fs: new_ref })
+                        .await
+                    {
+                        println!("Failed to serve connection: {:?}", err);
+                    }
+                });
             }
-        });
+            Err(err) => println!("Failed to serve connection: {:?}", err),
+        }
     }
 }
