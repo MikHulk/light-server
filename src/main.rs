@@ -1,13 +1,27 @@
 use hyper::server::conn::http1;
 use hyper_util::rt::TokioIo;
-use tokio::net::TcpListener;
-
 use std::env;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::time::SystemTime;
+use tokio::net::TcpListener;
+
+use chrono::offset::Utc;
+use chrono::DateTime;
 
 use light_server::fs::FsNode;
 use light_server::services::FsSvc;
+
+macro_rules! print_error {
+    ( $err:ident ) => {{
+        let now: DateTime<Utc> = SystemTime::now().into();
+        eprintln!(
+            "{} | Failed to serve connection: {}",
+            now.format("%Y-%m-%d %T"),
+            $err,
+        );
+    }};
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -29,11 +43,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                         .serve_connection(io, FsSvc { fs: new_ref })
                         .await
                     {
-                        println!("Failed to serve connection: {:?}", err);
+                        print_error!(err);
                     }
                 });
             }
-            Err(err) => println!("Failed to serve connection: {:?}", err),
+            Err(err) => {
+                print_error!(err);
+            }
         }
     }
 }
