@@ -1,17 +1,21 @@
 use light_server::fs::FsNode;
 
 fn is_dir(x: &FsNode) -> bool {
-    match x {
-        FsNode::Dir(_) => true,
-        _ => false,
-    }
+    matches!(x, FsNode::Dir(_))
 }
 
 fn is_file(x: &FsNode) -> bool {
-    match x {
-        FsNode::File(_) => true,
-        _ => false,
-    }
+    matches!(x, FsNode::File(_))
+}
+
+macro_rules! unwrap_node {
+    ( $node:ident ) => {{
+        match $node {
+            FsNode::Dir(ref dir_map) => Ok(dir_map),
+            _ => Err(()),
+        }
+        .unwrap()
+    }};
 }
 
 #[test]
@@ -22,11 +26,7 @@ fn it_processes_files_from_fspath() {
         ". not a dir"
     );
     let node = result.unwrap();
-    let dir_map = match node {
-        FsNode::Dir(ref dir_map) => Ok(dir_map),
-        _ => Err(()),
-    }
-    .unwrap();
+    let dir_map = unwrap_node!(node);
     assert!(dir_map.contains_key("Cargo.toml"), "no Cargo.toml");
     assert!(
         is_file(dir_map.get("Cargo.toml").unwrap()),
