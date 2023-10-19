@@ -10,3 +10,10 @@ http-body-util = "0.1.0-rc.3"
 hyper-util = { git = "https://github.com/hyperium/hyper-util.git" }
 bytes = "1.5.0"
 chrono = "0.4.31"
+
+[profile.release]
+strip = true  # Automatically strip symbols from the binary.
+opt-level = "z" # optimize for size
+lto = true
+codegen-units = 1
+panic="abort"
