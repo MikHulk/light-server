@@ -4,7 +4,8 @@ use std::env;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::SystemTime;
-use tokio::net::TcpListener;
+use tokio::io::{ErrorKind, Interest};
+use tokio::net::{TcpListener, TcpStream};
 
 use chrono::offset::Utc;
 use chrono::DateTime;
@@ -23,8 +24,7 @@ macro_rules! print_error {
     }};
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn server_loop() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let args: Vec<_> = env::args().collect();
     let dir_path = args[1].clone();
     let addr: SocketAddr = args[2].parse()?;
@@ -52,4 +52,60 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             }
         }
     }
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let handle = tokio::spawn(server_loop());
+    let listener = TcpListener::bind("127.0.0.1:9999").await?;
+    'outer: loop {
+        match listener.accept().await {
+            Ok((stream, addr)) => {
+                let ready = stream.ready(Interest::READABLE).await?;
+                if ready.is_readable() {
+                    let mut data = vec![0; 1024];
+                    match stream.try_read(&mut data) {
+                        Ok(n) => {
+                            data.truncate(n);
+                            let msg = String::from_utf8(data)?.trim().to_string();
+                            println!("{} sent {}", addr, msg);
+                            async fn send_msg(
+                                msg: &str,
+                                stream: &TcpStream,
+                            ) -> Result<(), Box<dyn std::error::Error + Send + Sync>>
+                            {
+                                let ready = stream.ready(Interest::WRITABLE).await?;
+                                if ready.is_writable() {
+                                    if let Err(e) = stream.try_write(msg.as_bytes()) {
+                                        return Err(e.into());
+                                    }
+                                }
+                                Ok(())
+                            }
+                            match msg.as_str() {
+                                "abort" => {
+                                    println!("server ending");
+                                    handle.abort();
+                                    send_msg("server ending\r\n", &stream).await?;
+                                    break 'outer;
+                                }
+                                _ => send_msg("unkown message\r\n", &stream).await?,
+                            }
+                        }
+                        Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
+                            continue;
+                        }
+                        Err(e) => {
+                            return Err(e.into());
+                        }
+                    }
+                }
+            }
+            Err(err) => {
+                print_error!(err);
+            }
+        }
+    }
+    println!("bye!");
+    Ok(())
 }
