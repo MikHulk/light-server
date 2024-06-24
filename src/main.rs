@@ -56,7 +56,7 @@ async fn server_loop() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let handle = tokio::spawn(server_loop());
+    let mut handle = tokio::spawn(server_loop());
     let listener = TcpListener::bind("127.0.0.1:9999").await?;
     'outer: loop {
         match listener.accept().await {
@@ -76,9 +76,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                             {
                                 let ready = stream.ready(Interest::WRITABLE).await?;
                                 if ready.is_writable() {
-                                    if let Err(e) = stream.try_write(msg.as_bytes()) {
-                                        return Err(e.into());
-                                    }
+                                    _ = stream.try_write(msg.as_bytes());
                                 }
                                 Ok(())
                             }
@@ -88,6 +86,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                                     handle.abort();
                                     send_msg("server ending\r\n", &stream).await?;
                                     break 'outer;
+                                }
+                                "reload" => {
+                                    println!("content reloading");
+                                    handle.abort();
+                                    handle = tokio::spawn(server_loop());
+                                    send_msg("content reloaded\r\n", &stream).await?;
                                 }
                                 _ => send_msg("unkown message\r\n", &stream).await?,
                             }
