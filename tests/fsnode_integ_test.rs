@@ -5,7 +5,7 @@ fn is_dir(x: &FsNode) -> bool {
 }
 
 fn is_file(x: &FsNode) -> bool {
-    matches!(x, FsNode::File(_))
+    matches!(x, FsNode::File(_, _))
 }
 
 macro_rules! unwrap_node {

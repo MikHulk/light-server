@@ -21,8 +21,9 @@ impl Service<Request<IncomingBody>> for FsSvc {
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
 
     fn call(&self, req: Request<IncomingBody>) -> Self::Future {
-        fn mk_response(v: &[u8]) -> Result<Response<Full<Bytes>>, hyper::Error> {
+        fn mk_response(mime_type: &str, v: &[u8]) -> Result<Response<Full<Bytes>>, hyper::Error> {
             Ok(Response::builder()
+                .header("content-type", mime_type)
                 .body(Full::new(Bytes::from(v.to_owned())))
                 .unwrap())
         }
@@ -35,7 +36,7 @@ impl Service<Request<IncomingBody>> for FsSvc {
 
         let path = req.uri().path();
         let resp = match self.fs.get(&path.split('/').skip(1).collect::<Vec<&str>>()) {
-            Some(content) => mk_response(content),
+            Some((mime_type, content)) => mk_response(mime_type, content),
             _ => mk_error(StatusCode::NOT_FOUND),
         };
         Box::pin(async { resp })

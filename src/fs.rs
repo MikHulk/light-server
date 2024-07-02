@@ -1,9 +1,10 @@
+use mime_guess::{Mime, MimeGuess};
 use std::collections::HashMap;
 use std::fs;
 
 #[derive(Debug)]
 pub enum FsNode {
-    File(Vec<u8>),
+    File(Mime, Vec<u8>),
     Dir(HashMap<String, FsNode>),
 }
 
@@ -11,7 +12,8 @@ impl FsNode {
     pub fn from_fs(path: &str) -> Result<FsNode, Box<dyn std::error::Error + Send + Sync>> {
         fn process_file(path: &str) -> Result<FsNode, Box<dyn std::error::Error + Send + Sync>> {
             let content = fs::read(path)?;
-            Ok(FsNode::File(content))
+            let mime_type = MimeGuess::from_path(path).first_or_text_plain();
+            Ok(FsNode::File(mime_type, content))
         }
 
         fn process_dir(path: &str) -> Result<FsNode, Box<dyn std::error::Error + Send + Sync>> {
@@ -42,7 +44,7 @@ impl FsNode {
         }
     }
 
-    pub fn get<'a>(&'a self, path: &[&'a str]) -> Option<&Vec<u8>> {
+    pub fn get<'a>(&'a self, path: &[&'a str]) -> Option<(&str, &Vec<u8>)> {
         match self {
             FsNode::Dir(content) => {
                 match content.get(if path[0].is_empty() {
@@ -50,9 +52,9 @@ impl FsNode {
                 } else {
                     path[0]
                 }) {
-                    Some(FsNode::File(content)) => {
+                    Some(FsNode::File(mime_type, content)) => {
                         if path.len() == 1 {
-                            Some(content)
+                            Some((mime_type.essence_str(), content))
                         } else {
                             None
                         }
@@ -61,9 +63,9 @@ impl FsNode {
                     None => None,
                 }
             }
-            FsNode::File(content) => {
+            FsNode::File(mime_type, content) => {
                 if path.is_empty() {
-                    Some(content)
+                    Some((mime_type.essence_str(), content))
                 } else {
                     None
                 }
